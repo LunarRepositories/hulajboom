@@ -32,7 +32,8 @@ const NAZWA_PILNOSCI = { pilne: 'Pilne', wkrotce: 'Wkrótce', spokojnie: 'Spokoj
 let dane = { wersja: 1, zadania: [] };
 let sesje = {};
 let widok = 'tydzien';   // widok startowy: kalendarz na 7 dni
-const filtry = { szukaj: '', status: 'aktywne', tag: '', sort: 'termin' };
+const filtry = { szukaj: '', tag: '', grupuj: 'pilnosc', pokazZrobione: false };
+let szczegolyId = null;   // zadanie otwarte w oknie szczegółów
 let edytowaneId = null;
 
 // "Dziś" można nadpisać do testów/prezentacji: index.html?dzis=2026-11-20
@@ -479,55 +480,128 @@ function porownajWaznosc(a, b) {
   return r !== 0 ? r : porownajTermin(a, b);
 }
 
-function widokWszystkie(mapa) {
+/* ---------- Wszystkie zadania: kolumny z kafelkami ---------- */
+const KOLUMNY = {
+  pilnosc: [
+    { klucz: 'pilne', nazwa: 'Pilne', opis: 'po terminie, dziś lub jutro' },
+    { klucz: 'wkrotce', nazwa: 'Wkrótce', opis: '2–7 dni' },
+    { klucz: 'spokojnie', nazwa: 'Spokojnie', opis: 'ponad tydzień lub bez terminu' },
+  ],
+  waznosc: [
+    { klucz: 'wysoki', nazwa: 'Wysoka ważność', opis: 'priorytet wysoki' },
+    { klucz: 'sredni', nazwa: 'Średnia ważność', opis: 'priorytet średni' },
+    { klucz: 'niski', nazwa: 'Niska ważność', opis: 'priorytet niski' },
+  ],
+};
+
+function htmlKafelka(z) {
+  return `
+    <li>
+      <button class="kafelek p-${z.priorytet} ${z.wykonane ? 'zrobiony' : ''}" data-akcja="szczegoly" data-id="${z.id}">
+        <span class="kafelek-tytul">${esc(z.tytul)}</span>
+        <span class="kafelek-podtytul ${z.wykonane ? '' : pilnosc(z)}">${z.wykonane ? 'zrobione' : esc(opisTerminu(z.termin))}</span>
+      </button>
+    </li>`;
+}
+
+function htmlKolumny(klucz, nazwa, opis, zadania) {
+  return `
+    <section class="kol kol-${klucz}">
+      <header class="kol-gora">
+        <span class="kol-nazwa">${nazwa}</span>
+        <span class="licznik">${zadania.length}</span>
+      </header>
+      <div class="kol-opis">${opis}</div>
+      ${zadania.length
+        ? `<ul class="kafelki">${zadania.map(htmlKafelka).join('')}</ul>`
+        : '<div class="kolumna-pusta">Pusto</div>'}
+    </section>`;
+}
+
+function widokWszystkie() {
   const tagi = [...new Set(dane.zadania.flatMap(z => z.tagi))].sort((a, b) => a.localeCompare(b, 'pl'));
   const fraza = filtry.szukaj.trim().toLowerCase();
+  const pasuje = z =>
+    (!filtry.tag || z.tagi.includes(filtry.tag)) &&
+    (!fraza || (z.tytul + ' ' + z.opis + ' ' + z.tagi.join(' ')).toLowerCase().includes(fraza));
 
-  let lista = dane.zadania.filter(z => {
-    if (filtry.status === 'aktywne' && z.wykonane) return false;
-    if (filtry.status === 'zrobione' && !z.wykonane) return false;
-    if (filtry.tag && !z.tagi.includes(filtry.tag)) return false;
-    if (fraza && !(z.tytul + ' ' + z.opis + ' ' + z.tagi.join(' ')).toLowerCase().includes(fraza)) return false;
-    return true;
-  });
-  const sortowanie = {
-    termin: porownajTermin,
-    waznosc: porownajWaznosc,
-    tytul: (a, b) => a.tytul.localeCompare(b.tytul, 'pl'),
-  }[filtry.sort];
-  lista.sort((a, b) => (a.wykonane - b.wykonane) || sortowanie(a, b));
+  const aktywne = dane.zadania.filter(z => !z.wykonane && pasuje(z)).sort(porownajTermin);
+  const zrobione = dane.zadania.filter(z => z.wykonane && pasuje(z)).sort(porownajTermin);
+  const ileZrobionych = dane.zadania.filter(z => z.wykonane).length;
 
-  const filtryHtml = `
+  const grupa = filtry.grupuj === 'waznosc' ? (z => z.priorytet) : pilnosc;
+  let kolumny = KOLUMNY[filtry.grupuj].map(k =>
+    htmlKolumny(k.klucz, k.nazwa, k.opis, aktywne.filter(z => grupa(z) === k.klucz)));
+  if (filtry.pokazZrobione) kolumny.push(htmlKolumny('zrobione', 'Zrobione', 'odhaczone zadania', zrobione));
+
+  const pasek = `
     <div class="filtry">
+      <div class="przelacznik" role="group" aria-label="Układ kolumn">
+        <span class="maly-tekst">Kolumny wg:</span>
+        <button class="${filtry.grupuj === 'pilnosc' ? 'wl' : ''}" data-akcja="grupuj" data-wartosc="pilnosc">Pilności</button>
+        <button class="${filtry.grupuj === 'waznosc' ? 'wl' : ''}" data-akcja="grupuj" data-wartosc="waznosc">Ważności</button>
+      </div>
       <input type="search" data-filtr="szukaj" placeholder="Szukaj…" value="${esc(filtry.szukaj)}" aria-label="Szukaj">
-      <select data-filtr="status" aria-label="Status">
-        <option value="aktywne" ${filtry.status === 'aktywne' ? 'selected' : ''}>Do zrobienia</option>
-        <option value="zrobione" ${filtry.status === 'zrobione' ? 'selected' : ''}>Zrobione</option>
-        <option value="wszystkie" ${filtry.status === 'wszystkie' ? 'selected' : ''}>Wszystkie</option>
-      </select>
       <select data-filtr="tag" aria-label="Tag">
         <option value="">Wszystkie tagi</option>
         ${tagi.map(t => `<option value="${esc(t)}" ${filtry.tag === t ? 'selected' : ''}>#${esc(t)}</option>`).join('')}
       </select>
-      <select data-filtr="sort" aria-label="Sortowanie">
-        <option value="termin" ${filtry.sort === 'termin' ? 'selected' : ''}>Sortuj: termin</option>
-        <option value="waznosc" ${filtry.sort === 'waznosc' ? 'selected' : ''}>Sortuj: ważność</option>
-        <option value="tytul" ${filtry.sort === 'tytul' ? 'selected' : ''}>Sortuj: alfabetycznie</option>
-      </select>
+      <label class="pokaz-zrobione">
+        <input type="checkbox" data-akcja="pokaz-zrobione" ${filtry.pokazZrobione ? 'checked' : ''}>
+        Pokaż zrobione (${ileZrobionych})
+      </label>
     </div>`;
 
-  let html = filtryHtml;
   if (!dane.zadania.length) {
-    html += `<div class="pusto">Nie masz jeszcze żadnych zadań.<br>
+    return pasek + `<div class="pusto">Nie masz jeszcze żadnych zadań.<br>
       <button class="przycisk glowny" data-akcja="nowe">+ Dodaj pierwsze zadanie</button>
       <button class="przycisk" data-akcja="wczytaj">Wczytaj plik JSON</button></div>`;
-  } else if (!lista.length) {
-    html += '<div class="pusto">Brak zadań pasujących do filtrów.</div>';
-  } else {
-    html += `<ul class="lista">${lista.map(htmlZadania).join('')}</ul>`;
   }
-  return html;
+  return pasek + `<div class="tablica ${filtry.pokazZrobione ? 'cztery' : ''}">${kolumny.join('')}</div>
+    <p class="maly-tekst tydzien-stopka">W kolumnie zadania są ułożone według terminu. Kliknij kafelek, aby zobaczyć szczegóły.</p>`;
 }
+
+/* ---------- Okno szczegółów zadania ---------- */
+const oknoSzczegoly = document.getElementById('szczegoly');
+
+function pokazSzczegoly(id) {
+  const z = znajdz(id);
+  if (!z) { if (oknoSzczegoly.open) oknoSzczegoly.close(); return; }
+  szczegolyId = id;
+  const p = pilnosc(z);
+  const plan = planSesji(z);
+  const potrzebne = SESJE_NA_PRIORYTET[z.priorytet];
+  let planHtml;
+  if (z.wykonane) planHtml = 'Zadanie zrobione.';
+  else if (!z.termin) planHtml = 'Bez terminu – nie da się zaplanować sesji. Zrób je w luźniejszy dzień.';
+  else if (!plan.length && zrobioneSesje(z.id).length >= potrzebne) planHtml = `Wszystkie sesje pracy (${potrzebne}) zrobione.`;
+  else if (!plan.length) planHtml = 'Termin jest dziś lub minął – nie planujemy już sesji, czas działać.';
+  else planHtml = `${plan.length} z ${potrzebne} sesji do zrobienia: ` + plan.map(s => s.data === DZIS ? 'dziś' : ladnaData(s.data)).join(' · ');
+
+  document.getElementById('szczegoly-tresc').innerHTML = `
+    <div class="szcz-gora">
+      <h2 class="${z.wykonane ? 'przekreslone' : ''}">${esc(z.tytul)}</h2>
+      <button type="button" class="ikona" data-akcja="zamknij-szczegoly" aria-label="Zamknij">✕</button>
+    </div>
+    ${z.opis ? `<p class="szcz-opis">${esc(z.opis)}</p>` : '<p class="szcz-opis maly-tekst">Brak opisu.</p>'}
+    <dl class="szcz-lista">
+      <dt>Termin</dt><dd>${!z.termin ? 'bez terminu' : roznicaDni(DZIS, z.termin) > 1 ? esc(opisTerminu(z.termin)) : esc(ladnaData(z.termin)) + ' · ' + esc(opisTerminu(z.termin))}</dd>
+      <dt>Ważność</dt><dd><span class="znaczek w-${z.priorytet}">${NAZWA_PRIORYTETU[z.priorytet]}</span></dd>
+      <dt>Pilność</dt><dd>${z.wykonane ? '–' : `<span class="znaczek ${p}">${NAZWA_PILNOSCI[p]}</span>`}</dd>
+      <dt>Tagi</dt><dd>${z.tagi.length ? z.tagi.map(t => `<span class="znaczek tag">#${esc(t)}</span>`).join(' ') : '–'}</dd>
+      <dt>Status</dt><dd>${z.wykonane ? '✓ Zrobione' : 'Do zrobienia'}</dd>
+      <dt>Plan pracy</dt><dd>${planHtml}</dd>
+    </dl>
+    <div class="okno-stopka szcz-stopka">
+      <button type="button" class="przycisk usun-przycisk" data-akcja="usun" data-id="${z.id}">Usuń</button>
+      <span style="flex:1"></span>
+      <button type="button" class="przycisk" data-akcja="edytuj" data-id="${z.id}">Edytuj</button>
+      <button type="button" class="przycisk glowny" data-akcja="odhacz" data-id="${z.id}">${z.wykonane ? 'Cofnij wykonanie' : '✓ Oznacz jako zrobione'}</button>
+    </div>`;
+  if (!oknoSzczegoly.open) oknoSzczegoly.showModal();
+}
+oknoSzczegoly.addEventListener('close', () => { szczegolyId = null; });
+oknoSzczegoly.addEventListener('click', e => { if (e.target === oknoSzczegoly) oknoSzczegoly.close(); });
 
 /* ---------- Kalendarz na najbliższe 7 dni (widok startowy) ---------- */
 function htmlKarty(z) {
@@ -658,11 +732,13 @@ function odswiez() {
   const mapa = obciazenieDni();
   const fokus = document.activeElement?.dataset?.filtr;   // nie gubimy kursora w wyszukiwarce
 
+  if (oknoSzczegoly.open && szczegolyId !== null) pokazSzczegoly(szczegolyId);
+
   if (widok === 'tydzien') tresc.innerHTML = widokTydzien(mapa);
   else if (widok === 'alarmy') tresc.innerHTML = widokAlarmy(mapa);
   else if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
   else if (widok === 'plan') tresc.innerHTML = widokPlan(mapa);
-  else tresc.innerHTML = widokWszystkie(mapa);
+  else tresc.innerHTML = widokWszystkie();
 
   if (fokus) {
     const pole = tresc.querySelector(`[data-filtr="${fokus}"]`);
@@ -799,8 +875,12 @@ document.addEventListener('click', e => {
   const id = el.dataset.id !== undefined ? Number(el.dataset.id) : null;
   switch (el.dataset.akcja) {
     case 'nowe': otworzFormularz(null, el.dataset.data || null); break;
-    case 'edytuj': otworzFormularz(id); break;
-    case 'usun': usun(id); break;
+    case 'edytuj': if (oknoSzczegoly.open) oknoSzczegoly.close(); otworzFormularz(id); break;
+    case 'usun': if (oknoSzczegoly.open) oknoSzczegoly.close(); usun(id); break;
+    case 'szczegoly': pokazSzczegoly(id); break;
+    case 'zamknij-szczegoly': oknoSzczegoly.close(); break;
+    case 'grupuj': filtry.grupuj = el.dataset.wartosc; odswiez(); break;
+    case 'pokaz-zrobione': filtry.pokazZrobione = el.checked; odswiez(); break;
     case 'odhacz': przelaczWykonane(id); break;
     case 'sesja': przelaczSesje(id, el.dataset.data); break;
     case 'wczytaj': document.getElementById('plik').click(); break;
