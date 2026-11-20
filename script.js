@@ -31,7 +31,7 @@ const NAZWA_PILNOSCI = { pilne: 'Pilne', wkrotce: 'Wkrótce', spokojnie: 'Spokoj
 // ---------- Stan aplikacji ----------
 let dane = { wersja: 1, zadania: [] };
 let sesje = {};
-let widok = 'dzis';
+let widok = 'tydzien';   // widok startowy: kalendarz na 7 dni
 const filtry = { szukaj: '', status: 'aktywne', tag: '', sort: 'termin' };
 let edytowaneId = null;
 
@@ -529,6 +529,52 @@ function widokWszystkie(mapa) {
   return html;
 }
 
+/* ---------- Kalendarz na najbliższe 7 dni (widok startowy) ---------- */
+function htmlKarty(z) {
+  const zalegle = z.termin < DZIS;
+  return `
+    <li class="karta p-${z.priorytet}">
+      <button class="odhacz maly-odhacz" data-akcja="odhacz" data-id="${z.id}"
+        title="Oznacz jako zrobione" aria-label="Oznacz jako zrobione"></button>
+      <button class="karta-tresc" data-akcja="edytuj" data-id="${z.id}" title="Kliknij, aby edytować">
+        <span class="karta-tytul">${esc(z.tytul)}</span>
+        ${zalegle ? `<span class="znaczek pilne">zaległe · ${esc(ladnaData(z.termin, false))}</span>` : ''}
+        ${z.tagi.length ? `<span class="karta-tagi">${z.tagi.map(t => '#' + esc(t)).join(' ')}</span>` : ''}
+      </button>
+    </li>`;
+}
+
+function widokTydzien(mapa) {
+  const kolumny = [];
+  for (let i = 0; i < 7; i++) {
+    const d = dodajDni(DZIS, i);
+    // zadania do zrobienia z terminem tego dnia; zaległe pokazujemy w kolumnie "dziś"
+    const zadania = dane.zadania
+      .filter(z => !z.wykonane && z.termin && (z.termin === d || (i === 0 && z.termin < DZIS)))
+      .sort(porownajTermin)
+      .sort((a, b) => WAGA_PRIORYTETU[b.priorytet] - WAGA_PRIORYTETU[a.priorytet]);
+    const data = zISO(d);
+    kolumny.push(`
+      <div class="kolumna ${i === 0 ? 'dzisiaj' : ''}">
+        <div class="kolumna-gora">
+          <span class="kolumna-dzien">${i === 0 ? 'Dziś' : esc(data.toLocaleDateString('pl-PL', { weekday: 'long' }))}</span>
+          <span class="kolumna-data">${esc(data.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }))}</span>
+        </div>
+        ${zadania.length ? `<ul class="karty">${zadania.map(htmlKarty).join('')}</ul>` : '<div class="kolumna-pusta">Brak terminów</div>'}
+        <button class="dodaj-w-dniu" data-akcja="nowe" data-data="${d}" title="Dodaj zadanie na ten dzień">+ Dodaj</button>
+      </div>`);
+  }
+  const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin).length;
+  const pozniej = dane.zadania.filter(z => !z.wykonane && z.termin && z.termin > dodajDni(DZIS, 6)).length;
+
+  let html = htmlAlarmu(mapa);
+  html += `<div class="tydzien">${kolumny.join('')}</div>`;
+  html += `<p class="maly-tekst tydzien-stopka">Kolor paska = ważność zadania. Kliknij zadanie, aby je edytować, a kółko – aby je odhaczyć.
+    ${pozniej ? `Później: ${pozniej} zad.` : ''} ${bezTerminu ? `· Bez terminu: ${bezTerminu} zad.` : ''}
+    <button class="link" data-widok="wszystkie">Zobacz wszystkie →</button></p>`;
+  return html;
+}
+
 function widokPlan(mapa) {
   const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin);
   const dni = Object.entries(mapa).map(([d, info]) => {
@@ -566,7 +612,8 @@ function odswiez() {
   const mapa = obciazenieDni();
   const fokus = document.activeElement?.dataset?.filtr;   // nie gubimy kursora w wyszukiwarce
 
-  if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
+  if (widok === 'tydzien') tresc.innerHTML = widokTydzien(mapa);
+  else if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
   else if (widok === 'plan') tresc.innerHTML = widokPlan(mapa);
   else tresc.innerHTML = widokWszystkie(mapa);
 
@@ -620,14 +667,14 @@ function podgladPlanu() {
   el.innerHTML = `Pilność: <b>${NAZWA_PILNOSCI[p]}</b> · Ważność: <b>${NAZWA_PRIORYTETU[w.priorytet]}</b> → ${potrzebne} ${potrzebne === 1 ? 'sesja' : 'sesje'} pracy.<br>Plan: ${dni}.`;
 }
 
-function otworzFormularz(id = null) {
+function otworzFormularz(id = null, domyslnyTermin = null) {
   edytowaneId = id;
   const z = id !== null ? znajdz(id) : null;
   document.getElementById('okno-tytul').textContent = z ? 'Edytuj zadanie' : 'Nowe zadanie';
   formularz.reset();
   formularz.tytul.value = z ? z.tytul : '';
   formularz.opis.value = z ? z.opis : '';
-  formularz.termin.value = z && z.termin ? z.termin : '';
+  formularz.termin.value = z && z.termin ? z.termin : (domyslnyTermin || '');
   formularz.tagi.value = z ? z.tagi.join(', ') : '';
   const pri = z ? z.priorytet : 'sredni';
   formularz.querySelector(`input[name="priorytet"][value="${pri}"]`).checked = true;
@@ -698,7 +745,7 @@ document.addEventListener('click', e => {
   }
   const id = el.dataset.id !== undefined ? Number(el.dataset.id) : null;
   switch (el.dataset.akcja) {
-    case 'nowe': otworzFormularz(); break;
+    case 'nowe': otworzFormularz(null, el.dataset.data || null); break;
     case 'edytuj': otworzFormularz(id); break;
     case 'usun': usun(id); break;
     case 'odhacz': przelaczWykonane(id); break;
