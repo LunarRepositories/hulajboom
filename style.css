@@ -266,43 +266,91 @@ h1 { font-size: 18px; margin: 0; }
 .ikona:hover { background: #f1f1ef; color: var(--tekst); }
 .ikona.usun:hover { color: var(--wysoki); }
 
-/* ----- Sesje pracy ----- */
-.sesja {
-  background: var(--karta);
-  border: 1px dashed #c9d2f5;
-  border-radius: var(--promien);
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.sesja .odhacz { border-radius: 6px; }
-.sesja.zrobiona .odhacz { background: var(--spokojnie); border-color: var(--spokojnie); }
-.sesja.zrobiona .sesja-tekst { text-decoration: line-through; opacity: .6; }
-.sesja-tekst { flex: 1; }
+/* ----- Terminarz: tydzień / 2 tygodnie / miesiąc ----- */
+.term-pasek { align-items: center; }
+.term-nawigacja { display: flex; gap: 4px; }
+.term-nawigacja .przycisk:disabled { opacity: .45; cursor: default; }
+.term-tytul { font-size: 16px; margin-right: auto; }
 
-/* ----- Plan na 14 dni ----- */
-.dni { display: grid; gap: 10px; }
-.dzien {
+.kal-naglowki, .kal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.kal-naglowki { margin-bottom: 6px; }
+.kal-naglowki span { font-size: 12px; font-weight: 600; color: var(--szary); text-align: center; }
+
+.dzien-kal {
   background: var(--karta);
   border: 1px solid var(--linia);
   border-radius: var(--promien);
-  padding: 12px 14px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
-.dzien.przeciazony { border-color: #ffa8a8; background: #fffafa; }
-.dzien.dzisiaj { box-shadow: inset 3px 0 0 var(--akcent); }
-.dzien-gora { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-.dzien-nazwa { font-weight: 600; }
-.dzien ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
-.dzien li { display: flex; gap: 8px; align-items: baseline; }
-.kropka { width: 8px; height: 8px; border-radius: 50%; flex: none; transform: translateY(-1px); }
-.kropka.wysoki { background: var(--wysoki); }
-.kropka.sredni { background: var(--sredni); }
-.kropka.niski { background: var(--niski); }
-.kropka.sesja-kropka { background: none; border: 2px solid var(--akcent); width: 9px; height: 9px; }
-.pusty-dzien { color: var(--szary); font-size: 14px; margin-top: 6px; }
+/* Kratki maleją razem z liczbą dni */
+.kal-tydzien .dzien-kal { min-height: 300px; }
+.kal-dwa .dzien-kal { min-height: 150px; padding: 6px; gap: 4px; }
+.kal-miesiac { gap: 4px; }
+.kal-miesiac .dzien-kal { min-height: 78px; padding: 5px 6px; gap: 4px; border-radius: 8px; }
 
-/* ----- Kalendarz tygodnia (7 kolumn) ----- */
+.dzien-kal.dzisiaj { border-color: var(--akcent); box-shadow: 0 0 0 1px var(--akcent) inset; }
+.dzien-kal.przeszly { background: #fbfbfa; }
+.dzien-kal.przeszly .kal-gora { opacity: .55; }
+.dzien-kal.poza { background: transparent; border-style: dashed; }
+.dzien-kal.poza .kal-gora { opacity: .4; }
+.dzien-kal.przeciazony { border-color: #ffa8a8; }
+
+.kal-gora { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.kal-tydzien .kal-gora { flex-direction: column; align-items: flex-start; padding-bottom: 6px; border-bottom: 1px solid var(--linia); position: relative; }
+.kal-dzien { font-weight: 600; font-size: 13px; text-transform: capitalize; }
+.kal-data { color: var(--szary); font-size: 12px; }
+.kal-nr { font-weight: 600; font-size: 13px; }
+.dzisiaj .kal-dzien, .dzisiaj .kal-nr { color: var(--akcent); }
+.kal-alarm { color: var(--pilne); font-size: 12px; }
+.kal-tydzien .kal-alarm { position: absolute; right: 0; top: 0; }
+.kal-pasek { height: 4px; margin: 0; }
+
+.kal-dwa .karta { padding: 4px 5px; gap: 4px; }
+.kal-dwa .karta-tytul { font-size: 12px; }
+.kal-dwa .maly-odhacz { width: 13px; height: 13px; }
+.kal-dwa .dodaj-w-dniu { padding: 1px; }
+
+.sesja-kal {
+  display: flex; gap: 6px; align-items: flex-start;
+  border: 1px dashed #b9c4f3; border-radius: 7px; padding: 5px 6px; background: #f8f9ff;
+}
+.sesja-kal .karta-tytul { font-size: 12px; color: #3b4a8a; }
+.sesja-kal.zrobiona .karta-tytul { text-decoration: line-through; opacity: .6; }
+.sesja-znak { width: 9px; height: 9px; border: 2px solid var(--akcent); border-radius: 50%; flex: none; margin-top: 3px; }
+.maly-odhacz.kwadrat { border-radius: 4px; font-size: 10px; }
+.sesja-kal.zrobiona .maly-odhacz { background: var(--spokojnie); border-color: var(--spokojnie); }
+.kal-dwa .sesja-kal { padding: 3px 5px; }
+.kal-dwa .sesja-kal .karta-tytul { font-size: 11px; }
+
+.kropki { display: flex; flex-wrap: wrap; gap: 4px; }
+.kropka-kal {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: #b0b0aa;
+  cursor: pointer;
+  transition: transform .1s;
+}
+button.kropka-kal:hover { transform: scale(1.35); }
+.kropka-kal.pilne { background: var(--pilne); }
+.kropka-kal.wkrotce { background: var(--wkrotce); }
+.kropka-kal.spokojnie { background: var(--spokojnie); }
+.kropka-kal.sesja { background: #fff; border: 2px solid var(--akcent); }
+.kropka-kal.sesja.zrobiona { background: var(--akcent); }
+.legenda { display: inline-flex; align-items: center; gap: 5px; margin-right: 6px; }
+.legenda .kropka-kal { cursor: default; margin-left: 6px; }
+
+/* ----- Kalendarz tygodnia (karty – używane w terminarzu) ----- */
 .tydzien {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -591,6 +639,16 @@ h1 { font-size: 18px; margin: 0; }
 @media (max-width: 860px) {
   .egz-form { grid-template-columns: 1fr 1fr; }
   .egz-form .pole:first-child, .egz-form .pole:nth-child(3) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 860px) {
+  .kal-tydzien, .kal-dwa { grid-template-columns: repeat(7, 140px); overflow-x: auto; padding-bottom: 6px; }
+  .kal-naglowki:has(+ .kal-dwa) { display: none; }
+  .term-tytul { flex-basis: 100%; order: -1; }
+}
+@media (max-width: 600px) {
+  .kal-miesiac .dzien-kal { min-height: 56px; padding: 4px; }
+  .kal-miesiac .kropka-kal { width: 9px; height: 9px; }
 }
 
 /* ----- Telefon ----- */

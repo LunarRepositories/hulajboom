@@ -31,7 +31,7 @@ const NAZWA_PILNOSCI = { pilne: 'Pilne', wkrotce: 'Wkrótce', spokojnie: 'Spokoj
 // ---------- Stan aplikacji ----------
 let dane = { wersja: 1, zadania: [] };
 let sesje = {};
-let widok = 'tydzien';   // widok startowy: kalendarz na 7 dni
+let widok = 'terminarz';   // widok startowy: kalendarz
 const filtry = { szukaj: '', tag: '', grupuj: 'pilnosc', pokazZrobione: false };
 let szczegolyId = null;   // zadanie otwarte w oknie szczegółów
 let edytowaneId = null;
@@ -371,49 +371,6 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function htmlZadania(z) {
-  const p = pilnosc(z);
-  const tagi = z.tagi.map(t => `<span class="znaczek tag">#${esc(t)}</span>`).join('');
-  const terminKlasa = z.wykonane ? '' : p;
-  return `
-    <li class="zadanie p-${z.priorytet} ${z.wykonane ? 'zrobione' : ''}">
-      <button class="odhacz" data-akcja="odhacz" data-id="${z.id}"
-        title="${z.wykonane ? 'Cofnij wykonanie' : 'Oznacz jako zrobione'}"
-        aria-label="${z.wykonane ? 'Cofnij wykonanie' : 'Oznacz jako zrobione'}">${z.wykonane ? '✓' : ''}</button>
-      <div>
-        <div class="zadanie-tytul">${esc(z.tytul)}</div>
-        ${z.opis ? `<div class="zadanie-opis">${esc(z.opis)}</div>` : ''}
-        <div class="meta">
-          <span class="znaczek ${terminKlasa}">${esc(opisTerminu(z.termin))}</span>
-          <span class="znaczek w-${z.priorytet}">Ważność: ${NAZWA_PRIORYTETU[z.priorytet]}</span>
-          ${!z.wykonane ? `<span class="znaczek ${p}">Pilność: ${NAZWA_PILNOSCI[p]}</span>` : ''}
-          ${tagi}
-        </div>
-      </div>
-      <div class="zadanie-akcje">
-        <button class="ikona" data-akcja="edytuj" data-id="${z.id}" title="Edytuj" aria-label="Edytuj">✎</button>
-        <button class="ikona usun" data-akcja="usun" data-id="${z.id}" title="Usuń" aria-label="Usuń">🗑</button>
-      </div>
-    </li>`;
-}
-
-function htmlSesji(s) {
-  const zrobiona = sesjaOdhaczona(s.zadanie.id, s.data);
-  return `
-    <li class="sesja ${zrobiona ? 'zrobiona' : ''}">
-      <button class="odhacz" data-akcja="sesja" data-id="${s.zadanie.id}" data-data="${s.data}"
-        aria-label="Odhacz sesję">${zrobiona ? '✓' : ''}</button>
-      <div class="sesja-tekst">
-        <strong>Sesja ${s.nr}/${s.z}:</strong> ${esc(s.zadanie.tytul)}
-        <div class="maly-tekst">Termin: ${esc(opisTerminu(s.zadanie.termin))}</div>
-      </div>
-    </li>`;
-}
-
-function sekcja(tytul, licznik, wnetrze) {
-  return `<section class="sekcja"><h2>${tytul} <span class="licznik">${licznik}</span></h2>${wnetrze}</section>`;
-}
-
 function htmlAlarmu(mapa) {
   const przeciazone = Object.entries(mapa).filter(([, i]) => i.punkty > LIMIT_DNIA);
   if (!przeciazone.length) return '';
@@ -428,46 +385,8 @@ function htmlAlarmu(mapa) {
     <div class="alarm" role="alert">
       <strong>⚠ Alarm przeciążenia</strong> – w najbliższych ${HORYZONT_DNI} dniach ${przeciazone.length === 1 ? 'jeden dzień jest' : 'są dni'} zbyt napięt${przeciazone.length === 1 ? 'y' : 'e'}:
       <ul>${pozycje}</ul>
-      ${widok !== 'plan' ? '<button class="przycisk maly" data-widok="plan">Zobacz plan</button>' : ''}
+      ${widok !== 'terminarz' ? '<button class="przycisk maly" data-widok="terminarz">Zobacz w terminarzu</button>' : ''}
     </div>`;
-}
-
-function htmlLicznikaDnia(info) {
-  const proc = Math.min(100, Math.round(info.punkty / LIMIT_DNIA * 100));
-  const klasa = info.punkty > LIMIT_DNIA ? 'pelny' : info.punkty >= LIMIT_DNIA - 1 ? 'sredni' : '';
-  const ocena = info.punkty > LIMIT_DNIA ? 'Za dużo na jeden dzień' : info.punkty >= LIMIT_DNIA - 1 ? 'Pełny dzień' : info.punkty === 0 ? 'Wolne – możesz zrobić coś na zapas' : 'Da się ogarnąć';
-  return `
-    <div class="obciazenie">
-      <div class="obciazenie-gora">
-        <strong>Obciążenie dnia: ${info.punkty} / ${LIMIT_DNIA} pkt</strong>
-        <span class="maly-tekst">${ocena}</span>
-      </div>
-      <div class="pasek ${klasa}"><div style="width:${proc}%"></div></div>
-      <div class="maly-tekst" style="margin-top:6px">Termin: wysoki 3 pkt, średni 2, niski 1 · sesja pracy 1 pkt</div>
-    </div>`;
-}
-
-function widokDzis(mapa) {
-  const zalegle = dane.zadania.filter(poTerminie).sort(porownajTermin);
-  const naDzis = dane.zadania.filter(z => !z.wykonane && z.termin === DZIS).sort(porownajWaznosc);
-  const sesjeDzis = mapa[DZIS].sesje;
-  // sesje odhaczone dziś (już nie ma ich w planie, ale chcemy je widzieć jako zrobione)
-  const odhaczoneDzis = dane.zadania
-    .filter(z => sesjaOdhaczona(z.id, DZIS))
-    .map(z => ({ data: DZIS, zadanie: z, nr: zrobioneSesje(z.id).indexOf(DZIS) + 1, z: SESJE_NA_PRIORYTET[z.priorytet] }));
-  const zrobioneDzisZadania = dane.zadania.filter(z => z.wykonane && z.termin === DZIS);
-
-  let html = htmlLicznikaDnia(mapa[DZIS]);
-  if (zalegle.length) html += sekcja('Po terminie', zalegle.length, `<ul class="lista">${zalegle.map(htmlZadania).join('')}</ul>`);
-  html += sekcja('Termin dziś', naDzis.length,
-    naDzis.length ? `<ul class="lista">${naDzis.map(htmlZadania).join('')}</ul>` : '<div class="pusto">Na dziś nie ma żadnych terminów.</div>');
-  const wszystkieSesje = [...sesjeDzis, ...odhaczoneDzis];
-  html += sekcja('Sesje pracy na dziś', wszystkieSesje.length,
-    wszystkieSesje.length
-      ? `<ul class="lista">${wszystkieSesje.map(htmlSesji).join('')}</ul>`
-      : '<div class="pusto">Dziś nie ma zaplanowanych sesji pracy.</div>');
-  if (zrobioneDzisZadania.length) html += sekcja('Zrobione dziś', zrobioneDzisZadania.length, `<ul class="lista">${zrobioneDzisZadania.map(htmlZadania).join('')}</ul>`);
-  return html;
 }
 
 function porownajTermin(a, b) {
@@ -609,50 +528,184 @@ function pokazSzczegoly(id) {
 oknoSzczegoly.addEventListener('close', () => { szczegolyId = null; });
 oknoSzczegoly.addEventListener('click', e => { if (e.target === oknoSzczegoly) oknoSzczegoly.close(); });
 
-/* ---------- Kalendarz na najbliższe 7 dni (widok startowy) ---------- */
-function htmlKarty(z) {
+/* =====================================================================
+   TERMINARZ – kalendarz: tydzień / 2 tygodnie / miesiąc
+   Siatka zawsze od poniedziałku. Im więcej dni, tym mniejsze kratki:
+   tydzień i 2 tygodnie pokazują nazwy zadań, miesiąc – kolorowe kropki
+   (kolor = pilność). Kliknięcie zadania lub kropki otwiera szczegóły.
+   ===================================================================== */
+const terminarz = { zakres: 'tydzien', przesuniecie: 0, pokazSesje: true };
+const NAZWY_DNI = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+
+function poniedzialek(s) {
+  return dodajDni(s, -((zISO(s).getDay() + 6) % 7));
+}
+
+function zakresTerminarza() {
+  const pon = poniedzialek(DZIS);
+  if (terminarz.zakres === 'tydzien') return { start: dodajDni(pon, 7 * terminarz.przesuniecie), dni: 7 };
+  if (terminarz.zakres === '2tyg') return { start: dodajDni(pon, 14 * terminarz.przesuniecie), dni: 14 };
+  const t = zISO(DZIS);
+  const pierwszy = new Date(t.getFullYear(), t.getMonth() + terminarz.przesuniecie, 1);
+  const ostatni = new Date(pierwszy.getFullYear(), pierwszy.getMonth() + 1, 0);
+  const start = poniedzialek(naISO(pierwszy));
+  const koniec = dodajDni(poniedzialek(naISO(ostatni)), 6);
+  return { start, dni: roznicaDni(start, koniec) + 1, miesiac: pierwszy.getMonth(), pierwszy };
+}
+
+/** Terminy, sesje pracy i punkty obciążenia dla każdego dnia w zakresie. */
+function daneKalendarza(start, dni) {
+  const mapa = {};
+  for (let i = 0; i < dni; i++) mapa[dodajDni(start, i)] = { terminy: [], sesje: [], punkty: 0 };
+  for (const z of dane.zadania) {
+    if (z.wykonane) continue;
+    if (z.termin) {
+      const dzien = z.termin < DZIS ? DZIS : z.termin;   // zaległe pokazujemy dziś
+      if (mapa[dzien]) {
+        mapa[dzien].terminy.push(z);
+        mapa[dzien].punkty += czyPowtorka(z) ? PUNKTY_ZA_SESJE : PUNKTY_ZA_TERMIN[z.priorytet];
+      }
+    }
+    for (const s of planSesji(z)) {
+      if (mapa[s.data]) { mapa[s.data].sesje.push(s); mapa[s.data].punkty += PUNKTY_ZA_SESJE; }
+    }
+    // sesje odhaczone (np. dziś) – pokazujemy jako zrobione
+    zrobioneSesje(z.id).forEach((d, i) => {
+      if (mapa[d]) mapa[d].sesje.push({ data: d, zadanie: z, nr: i + 1, z: SESJE_NA_PRIORYTET[z.priorytet], zrobiona: true });
+    });
+  }
+  for (const info of Object.values(mapa)) {
+    info.terminy.sort((a, b) => (WAGA_PRIORYTETU[b.priorytet] - WAGA_PRIORYTETU[a.priorytet]) || porownajTermin(a, b));
+    info.sesje.sort((a, b) => (a.zrobiona ? 1 : 0) - (b.zrobiona ? 1 : 0));
+  }
+  return mapa;
+}
+
+function htmlTerminuKal(z) {
   const zalegle = z.termin < DZIS;
   return `
     <li class="karta p-${z.priorytet}">
-      <button class="odhacz maly-odhacz" data-akcja="odhacz" data-id="${z.id}"
-        title="Oznacz jako zrobione" aria-label="Oznacz jako zrobione"></button>
-      <button class="karta-tresc" data-akcja="edytuj" data-id="${z.id}" title="Kliknij, aby edytować">
+      <button class="odhacz maly-odhacz" data-akcja="odhacz" data-id="${z.id}" title="Oznacz jako zrobione" aria-label="Oznacz jako zrobione"></button>
+      <button class="karta-tresc" data-akcja="szczegoly" data-id="${z.id}" title="Pokaż szczegóły">
         <span class="karta-tytul">${esc(z.tytul)}</span>
         ${zalegle ? `<span class="znaczek pilne">zaległe · ${esc(ladnaData(z.termin, false))}</span>` : ''}
-        ${z.tagi.length ? `<span class="karta-tagi">${z.tagi.map(t => '#' + esc(t)).join(' ')}</span>` : ''}
       </button>
     </li>`;
 }
 
-function widokTydzien(mapa) {
-  const kolumny = [];
-  for (let i = 0; i < 7; i++) {
-    const d = dodajDni(DZIS, i);
-    // zadania do zrobienia z terminem tego dnia; zaległe pokazujemy w kolumnie "dziś"
-    const zadania = dane.zadania
-      .filter(z => !z.wykonane && z.termin && (z.termin === d || (i === 0 && z.termin < DZIS)))
-      .sort(porownajTermin)
-      .sort((a, b) => WAGA_PRIORYTETU[b.priorytet] - WAGA_PRIORYTETU[a.priorytet]);
-    const data = zISO(d);
-    kolumny.push(`
-      <div class="kolumna ${i === 0 ? 'dzisiaj' : ''}">
-        <div class="kolumna-gora">
-          <span class="kolumna-dzien">${i === 0 ? 'Dziś' : esc(data.toLocaleDateString('pl-PL', { weekday: 'long' }))}</span>
-          <span class="kolumna-data">${esc(data.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }))}</span>
-        </div>
-        ${zadania.length ? `<ul class="karty">${zadania.map(htmlKarty).join('')}</ul>` : '<div class="kolumna-pusta">Brak terminów</div>'}
-        <button class="dodaj-w-dniu" data-akcja="nowe" data-data="${d}" title="Dodaj zadanie na ten dzień">+ Dodaj</button>
-      </div>`);
-  }
-  const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin).length;
-  const pozniej = dane.zadania.filter(z => !z.wykonane && z.termin && z.termin > dodajDni(DZIS, 6)).length;
+function htmlSesjiKal(s) {
+  const dzis = s.data === DZIS;
+  const zrobiona = !!s.zrobiona;
+  return `
+    <li class="sesja-kal ${zrobiona ? 'zrobiona' : ''}">
+      ${dzis ? `<button class="odhacz maly-odhacz kwadrat" data-akcja="sesja" data-id="${s.zadanie.id}" data-data="${s.data}"
+        title="${zrobiona ? 'Cofnij' : 'Odhacz sesję'}" aria-label="Odhacz sesję">${zrobiona ? '✓' : ''}</button>` : '<span class="sesja-znak"></span>'}
+      <button class="karta-tresc" data-akcja="szczegoly" data-id="${s.zadanie.id}" title="Sesja pracy – pokaż zadanie">
+        <span class="karta-tytul">Sesja ${s.nr}/${s.z}: ${esc(s.zadanie.tytul)}</span>
+      </button>
+    </li>`;
+}
 
-  let html = '';
-  html += `<div class="tydzien">${kolumny.join('')}</div>`;
-  html += `<p class="maly-tekst tydzien-stopka">Kolor paska = ważność zadania. Kliknij zadanie, aby je edytować, a kółko – aby je odhaczyć.
-    ${pozniej ? `Później: ${pozniej} zad.` : ''} ${bezTerminu ? `· Bez terminu: ${bezTerminu} zad.` : ''}
-    <button class="link" data-widok="wszystkie">Zobacz wszystkie →</button></p>`;
-  return html;
+function htmlKropek(info) {
+  const kropki = info.terminy.map(z => {
+    const p = pilnosc(z);
+    return `<button class="kropka-kal ${p}" data-akcja="szczegoly" data-id="${z.id}"
+      title="${esc(z.tytul)} (${NAZWA_PILNOSCI[p].toLowerCase()})" aria-label="${esc(z.tytul)}"></button>`;
+  });
+  if (terminarz.pokazSesje) {
+    for (const s of info.sesje) {
+      kropki.push(`<button class="kropka-kal sesja ${s.zrobiona ? 'zrobiona' : ''}" data-akcja="szczegoly" data-id="${s.zadanie.id}"
+        title="Sesja ${s.nr}/${s.z}: ${esc(s.zadanie.tytul)}" aria-label="Sesja: ${esc(s.zadanie.tytul)}"></button>`);
+    }
+  }
+  return kropki.length ? `<div class="kropki">${kropki.join('')}</div>` : '';
+}
+
+function htmlDniaKal(d, info, tryb, zakres) {
+  const data = zISO(d);
+  const przeszly = d < DZIS;
+  const poza = tryb === 'miesiac' && data.getMonth() !== zakres.miesiac;
+  const przeciazony = !przeszly && info.punkty > LIMIT_DNIA;
+  const klasy = ['dzien-kal', d === DZIS && 'dzisiaj', przeszly && 'przeszly', poza && 'poza', przeciazony && 'przeciazony'].filter(Boolean).join(' ');
+
+  let naglowek;
+  if (tryb === 'tydzien') {
+    naglowek = `<span class="kal-dzien">${d === DZIS ? 'Dziś' : esc(data.toLocaleDateString('pl-PL', { weekday: 'long' }))}</span>
+      <span class="kal-data">${esc(data.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }))}</span>`;
+  } else {
+    const nr = data.getDate();
+    const mies = (nr === 1 || d === zakres.start) ? ' ' + esc(data.toLocaleDateString('pl-PL', { month: 'short' })) : '';
+    naglowek = `<span class="kal-nr">${nr}${mies}</span>`;
+  }
+
+  const proc = Math.min(100, Math.round(info.punkty / LIMIT_DNIA * 100));
+  const klasaPaska = info.punkty > LIMIT_DNIA ? 'pelny' : info.punkty >= LIMIT_DNIA - 1 ? 'sredni' : '';
+  const pasek = !przeszly && info.punkty > 0
+    ? `<div class="pasek kal-pasek ${klasaPaska}" title="Obciążenie: ${info.punkty}/${LIMIT_DNIA} pkt"><div style="width:${proc}%"></div></div>` : '';
+
+  let srodek;
+  if (tryb === 'miesiac') {
+    srodek = htmlKropek(info);
+  } else {
+    const pozycje = [
+      ...info.terminy.map(htmlTerminuKal),
+      ...(terminarz.pokazSesje ? info.sesje.map(htmlSesjiKal) : []),
+    ];
+    srodek = pozycje.length ? `<ul class="karty">${pozycje.join('')}</ul>` : '';
+  }
+
+  const dodaj = tryb === 'miesiac' || przeszly ? ''
+    : `<button class="dodaj-w-dniu" data-akcja="nowe" data-data="${d}" title="Dodaj zadanie na ten dzień">${tryb === 'tydzien' ? '+ Dodaj' : '+'}</button>`;
+
+  return `
+    <div class="${klasy}">
+      <div class="kal-gora">${naglowek}${przeciazony ? '<span class="kal-alarm" title="Dzień przeciążony">⚠</span>' : ''}</div>
+      ${pasek}
+      ${srodek}
+      ${dodaj}
+    </div>`;
+}
+
+function widokTerminarz() {
+  const zakres = zakresTerminarza();
+  const tryb = terminarz.zakres === 'miesiac' ? 'miesiac' : terminarz.zakres === '2tyg' ? 'dwa' : 'tydzien';
+  const mapa = daneKalendarza(zakres.start, zakres.dni);
+  const koniec = dodajDni(zakres.start, zakres.dni - 1);
+
+  const tytul = tryb === 'miesiac'
+    ? (t => t.charAt(0).toUpperCase() + t.slice(1))(zakres.pierwszy.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' }))
+    : `${ladnaData(zakres.start, false)} – ${ladnaData(koniec, false)} ${zISO(koniec).getFullYear()}`;
+
+  const przycisk = (w, n) => `<button class="${terminarz.zakres === w ? 'wl' : ''}" data-akcja="zakres" data-wartosc="${w}">${n}</button>`;
+  const pasekNarzedzi = `
+    <div class="filtry term-pasek">
+      <div class="przelacznik" role="group" aria-label="Zakres">
+        ${przycisk('tydzien', 'Tydzień')}${przycisk('2tyg', '2 tygodnie')}${przycisk('miesiac', 'Miesiąc')}
+      </div>
+      <div class="term-nawigacja">
+        <button class="przycisk maly" data-akcja="przesun" data-wartosc="-1" aria-label="Wcześniej">←</button>
+        <button class="przycisk maly" data-akcja="przesun" data-wartosc="0" ${terminarz.przesuniecie === 0 ? 'disabled' : ''}>Dziś</button>
+        <button class="przycisk maly" data-akcja="przesun" data-wartosc="1" aria-label="Później">→</button>
+      </div>
+      <strong class="term-tytul">${esc(tytul)}</strong>
+      <label class="pokaz-zrobione">
+        <input type="checkbox" data-akcja="pokaz-sesje" ${terminarz.pokazSesje ? 'checked' : ''}> Sesje pracy
+      </label>
+    </div>`;
+
+  const naglowkiDni = tryb === 'tydzien' ? '' : `<div class="kal-naglowki">${NAZWY_DNI.map(n => `<span>${n}</span>`).join('')}</div>`;
+  const komorki = Object.entries(mapa).map(([d, info]) => htmlDniaKal(d, info, tryb, zakres)).join('');
+
+  const legenda = tryb === 'miesiac'
+    ? `<span class="legenda"><i class="kropka-kal pilne"></i> pilne <i class="kropka-kal wkrotce"></i> wkrótce <i class="kropka-kal spokojnie"></i> spokojnie
+       ${terminarz.pokazSesje ? '<i class="kropka-kal sesja"></i> sesja pracy' : ''}</span> Kliknij kropkę, aby zobaczyć zadanie.`
+    : 'Kolor paska przy zadaniu = ważność. Kliknij zadanie, aby zobaczyć szczegóły, a kółko – aby je odhaczyć. Sesje pracy są w przerywanej ramce.';
+  const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin).length;
+
+  return pasekNarzedzi + naglowkiDni +
+    `<div class="kal kal-${tryb}">${komorki}</div>
+     <p class="maly-tekst tydzien-stopka">${legenda}
+       ${bezTerminu ? ` · Bez terminu: ${bezTerminu} zad. <button class="link" data-widok="wszystkie">zobacz →</button>` : ''}</p>`;
 }
 
 /* =====================================================================
@@ -913,39 +966,6 @@ function widokAlarmy(mapa) {
   return html;
 }
 
-function widokPlan(mapa) {
-  const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin);
-  const dni = Object.entries(mapa).map(([d, info]) => {
-    const przeciazony = info.punkty > LIMIT_DNIA;
-    const proc = Math.min(100, Math.round(info.punkty / LIMIT_DNIA * 100));
-    const klasa = przeciazony ? 'pelny' : info.punkty >= LIMIT_DNIA - 1 ? 'sredni' : '';
-    const pozycje = [
-      ...info.terminy.map(z => `<li><span class="kropka ${z.priorytet}"></span><span><b>Termin:</b> ${esc(z.tytul)}${z.termin < DZIS ? ' <span class="znaczek pilne">zaległe</span>' : ''}</span></li>`),
-      ...info.sesje.map(s => `<li><span class="kropka sesja-kropka"></span><span>Sesja ${s.nr}/${s.z}: ${esc(s.zadanie.tytul)}</span></li>`),
-    ];
-    return `
-      <div class="dzien ${przeciazony ? 'przeciazony' : ''} ${d === DZIS ? 'dzisiaj' : ''}">
-        <div class="dzien-gora">
-          <span class="dzien-nazwa">${d === DZIS ? 'Dziś · ' : ''}${ladnaData(d)}</span>
-          <span class="maly-tekst">${przeciazony ? '⚠ ' : ''}${info.punkty} / ${LIMIT_DNIA} pkt</span>
-        </div>
-        <div class="pasek ${klasa}"><div style="width:${proc}%"></div></div>
-        ${pozycje.length ? `<ul>${pozycje.join('')}</ul>` : '<div class="pusty-dzien">Wolne</div>'}
-      </div>`;
-  }).join('');
-
-  let html = '';
-  html += `<p class="maly-tekst" style="margin-top:0">Plan liczy się sam: ważność (priorytet) decyduje, ile sesji pracy potrzebuje zadanie,
-    a pilność (czas do terminu) – jak gęsto są rozłożone. Pominięta sesja nie przepada, tylko przesuwa się na kolejne dni.</p>`;
-  html += `<div class="dni">${dni}</div>`;
-  if (bezTerminu.length) {
-    html += `<section class="sekcja" style="margin-top:24px"><h2>Bez terminu <span class="licznik">${bezTerminu.length}</span></h2>
-      <p class="maly-tekst" style="margin-top:0">Tych zadań nie da się zaplanować – zrób je, gdy dzień jest luźny.</p>
-      <ul class="lista">${bezTerminu.sort(porownajWaznosc).map(htmlZadania).join('')}</ul></section>`;
-  }
-  return html;
-}
-
 function odswiez() {
   const mapa = obciazenieDni();
   const fokus = document.activeElement?.dataset?.filtr;   // nie gubimy kursora w wyszukiwarce
@@ -953,11 +973,9 @@ function odswiez() {
   if (oknoSzczegoly.open && szczegolyId !== null) pokazSzczegoly(szczegolyId);
   if (widok === 'sesja') setTimeout(podgladEgzaminu, 0);
 
-  if (widok === 'tydzien') tresc.innerHTML = widokTydzien(mapa);
+  if (widok === 'terminarz') tresc.innerHTML = widokTerminarz();
   else if (widok === 'alarmy') tresc.innerHTML = widokAlarmy(mapa);
   else if (widok === 'sesja') tresc.innerHTML = widokSesja();
-  else if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
-  else if (widok === 'plan') tresc.innerHTML = widokPlan(mapa);
   else tresc.innerHTML = widokWszystkie();
 
   if (fokus) {
@@ -1106,6 +1124,9 @@ document.addEventListener('click', e => {
     case 'grupuj': filtry.grupuj = el.dataset.wartosc; odswiez(); break;
     case 'pokaz-zrobione': filtry.pokazZrobione = el.checked; odswiez(); break;
     case 'zaplanuj-powtorki': zaplanujPowtorki(id); break;
+    case 'zakres': terminarz.zakres = el.dataset.wartosc; terminarz.przesuniecie = 0; odswiez(); break;
+    case 'przesun': terminarz.przesuniecie = el.dataset.wartosc === '0' ? 0 : terminarz.przesuniecie + Number(el.dataset.wartosc); odswiez(); break;
+    case 'pokaz-sesje': terminarz.pokazSesje = el.checked; odswiez(); break;
     case 'usun-egzamin': usunEgzamin(id); break;
     case 'odhacz': przelaczWykonane(id); break;
     case 'sesja': przelaczSesje(id, el.dataset.data); break;
