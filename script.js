@@ -246,6 +246,9 @@ function zrobioneSesje(id) {
  */
 function planSesji(z) {
   if (z.wykonane || !z.termin) return [];
+  // Tryb sesji egzaminacyjnej: powtórki same są nauką, a egzamin z powtórkami nie dostaje sesji.
+  if (czyPowtorka(z)) return [];
+  if (czyEgzamin(z) && powtorkiEgzaminu(z).length) return [];
   const potrzebne = SESJE_NA_PRIORYTET[z.priorytet] || 1;
   const zrobione = zrobioneSesje(z.id);
   const zostalo = Math.max(0, potrzebne - zrobione.length);
@@ -290,7 +293,7 @@ function obciazenieDni() {
       const dzien = z.termin < DZIS ? DZIS : z.termin;   // zaległe liczą się do dziś
       if (mapa[dzien]) {
         mapa[dzien].terminy.push(z);
-        mapa[dzien].punkty += PUNKTY_ZA_TERMIN[z.priorytet];
+        mapa[dzien].punkty += czyPowtorka(z) ? PUNKTY_ZA_SESJE : PUNKTY_ZA_TERMIN[z.priorytet];
       }
     }
     for (const s of planSesji(z)) {
@@ -572,7 +575,10 @@ function pokazSzczegoly(id) {
   const plan = planSesji(z);
   const potrzebne = SESJE_NA_PRIORYTET[z.priorytet];
   let planHtml;
+  const powtorki = czyEgzamin(z) ? powtorkiEgzaminu(z) : [];
   if (z.wykonane) planHtml = 'Zadanie zrobione.';
+  else if (czyPowtorka(z)) planHtml = 'To powtórka przed egzaminem (tryb sesji) – sama jest sesją nauki.';
+  else if (powtorki.length) planHtml = `Powtórki: ${powtorki.filter(x => x.wykonane).length} z ${powtorki.length} zrobione · ` + powtorki.map(x => (x.wykonane ? '✓ ' : '') + ladnaData(x.termin)).join(' · ');
   else if (!z.termin) planHtml = 'Bez terminu – nie da się zaplanować sesji. Zrób je w luźniejszy dzień.';
   else if (!plan.length && zrobioneSesje(z.id).length >= potrzebne) planHtml = `Wszystkie sesje pracy (${potrzebne}) zrobione.`;
   else if (!plan.length) planHtml = 'Termin jest dziś lub minął – nie planujemy już sesji, czas działać.';
@@ -648,6 +654,218 @@ function widokTydzien(mapa) {
     <button class="link" data-widok="wszystkie">Zobacz wszystkie →</button></p>`;
   return html;
 }
+
+/* =====================================================================
+   TRYB SESJI EGZAMINACYJNEJ
+   Egzamin = zwykłe zadanie z tagiem #egzamin.
+   Powtórki = zwykłe zadania z tagiem #powtórka i tytułem
+   "Powtórka 2/5 – <tytuł egzaminu>" (po tytule wiemy, do którego egzaminu należą).
+   Dzięki temu wszystko zapisuje się w pliku JSON w tym samym formacie.
+   Powtórki są coraz gęściej przed egzaminem (powtórki w odstępach):
+   np. 14, 7, 4, 2 i 1 dzień przed egzaminem.
+   ===================================================================== */
+const TAG_EGZAMIN = 'egzamin';
+const TAG_POWTORKA = 'powtórka';
+const ODSTEPY_POWTOREK = [1, 2, 4, 7, 14, 21, 30];   // dni przed egzaminem
+const formEgz = { przedmiot: '', data: '', opis: '', ile: '5', priorytet: 'wysoki' };
+
+function czyEgzamin(z) { return z.tagi.includes(TAG_EGZAMIN); }
+function czyPowtorka(z) { return z.tagi.includes(TAG_POWTORKA); }
+function powtorkiEgzaminu(e) {
+  const koncowka = ' – ' + e.tytul;
+  return dane.zadania.filter(z => z.id !== e.id && czyPowtorka(z) && z.tytul.endsWith(koncowka)).sort(porownajTermin);
+}
+
+/** Daty powtórek: coraz gęściej przed egzaminem, tylko od dziś wzwyż. */
+function terminyPowtorek(dataEgzaminu, ile) {
+  const doEgzaminu = roznicaDni(DZIS, dataEgzaminu);
+  if (doEgzaminu < 1) return [];
+  const odstepy = ODSTEPY_POWTOREK.slice(0, ile).filter(o => o <= doEgzaminu);
+  // za mało czasu na idealny rozkład → dokładamy wolne dni najbliżej egzaminu
+  for (let o = 1; o <= doEgzaminu && odstepy.length < ile; o++) {
+    if (!odstepy.includes(o)) odstepy.push(o);
+  }
+  return odstepy.sort((a, b) => b - a).map(o => dodajDni(dataEgzaminu, -o));
+}
+
+function dodajPowtorki(egzamin, ile) {
+  const daty = terminyPowtorek(egzamin.termin, ile);
+  daty.forEach((d, i) => {
+    dane.zadania.push(uporzadkuj({
+      id: noweId(),
+      tytul: `Powtórka ${i + 1}/${daty.length} – ${egzamin.tytul}`,
+      opis: `Powtórka materiału przed egzaminem (${ladnaData(egzamin.termin)}).`,
+      termin: d,
+      priorytet: egzamin.priorytet,
+      wykonane: false,
+      tagi: [TAG_POWTORKA],
+    }));
+  });
+  return daty.length;
+}
+
+function dodajEgzamin() {
+  const przedmiot = formEgz.przedmiot.trim();
+  const blad = document.getElementById('blad-egz');
+  if (!przedmiot) { blad.textContent = 'Podaj przedmiot.'; return; }
+  if (!poprawnaData(formEgz.data) || roznicaDni(DZIS, formEgz.data) < 1) {
+    blad.textContent = 'Podaj datę egzaminu – najwcześniej jutro.'; return;
+  }
+  const tytul = /^egzamin/i.test(przedmiot) ? przedmiot : `Egzamin: ${przedmiot}`;
+  if (dane.zadania.some(z => czyEgzamin(z) && z.tytul === tytul)) {
+    blad.textContent = 'Taki egzamin już jest na liście.'; return;
+  }
+  const egzamin = uporzadkuj({
+    id: noweId(), tytul, opis: formEgz.opis.trim(), termin: formEgz.data,
+    priorytet: formEgz.priorytet, wykonane: false, tagi: [TAG_EGZAMIN],
+  });
+  dane.zadania.push(egzamin);
+  const ile = dodajPowtorki(egzamin, Number(formEgz.ile));
+  Object.assign(formEgz, { przedmiot: '', data: '', opis: '' });
+  zapiszLokalnie();
+  odswiez();
+  powiadom(`Dodano „${tytul}” i ${ile} powtórek.`);
+}
+
+function zaplanujPowtorki(id) {
+  const e = znajdz(id);
+  if (!e || !e.termin) return;
+  const ile = dodajPowtorki(e, 5);
+  zapiszLokalnie();
+  odswiez();
+  powiadom(ile ? `Zaplanowano ${ile} powtórek do „${e.tytul}”.` : 'Za mało czasu do egzaminu, żeby zaplanować powtórki.');
+}
+
+function usunEgzamin(id) {
+  const e = znajdz(id);
+  if (!e) return;
+  const doUsuniecia = new Set([id, ...powtorkiEgzaminu(e).map(z => z.id)]);
+  const poprzednie = dane.zadania.slice();
+  dane.zadania = dane.zadania.filter(z => !doUsuniecia.has(z.id));
+  for (const x of doUsuniecia) delete sesje[x];
+  zapiszLokalnie();
+  odswiez();
+  powiadom(`Usunięto „${e.tytul}” razem z powtórkami.`, 'Cofnij', () => {
+    dane.zadania = poprzednie;
+    zapiszLokalnie();
+    odswiez();
+  });
+}
+
+function podgladEgzaminu() {
+  const el = document.getElementById('podglad-egz');
+  if (!el) return;
+  if (!poprawnaData(formEgz.data)) { el.innerHTML = 'Wybierz datę egzaminu, a pokażę plan powtórek.'; return; }
+  const doEgz = roznicaDni(DZIS, formEgz.data);
+  if (doEgz < 1) { el.innerHTML = 'Egzamin musi być najwcześniej jutro.'; return; }
+  const daty = terminyPowtorek(formEgz.data, Number(formEgz.ile));
+  el.innerHTML = `Do egzaminu: <b>${doEgz} dni</b>. Powtórki (${daty.length}): ` +
+    daty.map(d => `<span class="znaczek tag">${esc(d === DZIS ? 'dziś' : ladnaData(d))}</span>`).join(' ');
+}
+
+function htmlEgzaminu(e) {
+  const powtorki = powtorkiEgzaminu(e);
+  const zrobione = powtorki.filter(z => z.wykonane).length;
+  const proc = powtorki.length ? Math.round(zrobione / powtorki.length * 100) : 0;
+  const doEgz = e.termin ? roznicaDni(DZIS, e.termin) : null;
+  const odliczanie = doEgz === null ? 'bez daty' : doEgz === 0 ? 'DZIŚ' : doEgz === 1 ? 'jutro' : `za ${doEgz} dni`;
+
+  const chipy = powtorki.map(z => {
+    const zalegla = !z.wykonane && z.termin < DZIS;
+    return `<button class="powtorka ${z.wykonane ? 'zrobiona' : ''} ${zalegla ? 'zalegla' : ''} ${z.termin === DZIS ? 'dzis' : ''}"
+      data-akcja="odhacz" data-id="${z.id}" title="${z.wykonane ? 'Cofnij' : 'Odhacz powtórkę'}">
+      <span class="powtorka-znak">${z.wykonane ? '✓' : ''}</span>${esc(z.termin === DZIS ? 'dziś' : ladnaData(z.termin))}</button>`;
+  }).join('');
+
+  let dol;
+  if (powtorki.length) {
+    dol = `
+      <div class="egz-postep">
+        <div class="pasek"><div style="width:${proc}%"></div></div>
+        <span class="maly-tekst">Powtórki: ${zrobione}/${powtorki.length}</span>
+      </div>
+      <div class="powtorki">${chipy}</div>`;
+  } else if (e.termin && doEgz >= 1) {
+    dol = `<p class="maly-tekst">Ten egzamin nie ma jeszcze powtórek.</p>
+      <button class="przycisk maly" data-akcja="zaplanuj-powtorki" data-id="${e.id}">Zaplanuj 5 powtórek</button>`;
+  } else {
+    dol = '<p class="maly-tekst">Brak daty lub za mało czasu, żeby zaplanować powtórki.</p>';
+  }
+
+  return `
+    <article class="egzamin p-${e.priorytet}">
+      <div class="egz-gora">
+        <div>
+          <button class="egz-tytul" data-akcja="szczegoly" data-id="${e.id}">${esc(e.tytul)}</button>
+          <div class="maly-tekst">${e.termin ? esc(ladnaData(e.termin)) : 'bez daty'}${e.opis ? ' · ' + esc(e.opis) : ''}</div>
+        </div>
+        <div class="odliczanie ${doEgz !== null && doEgz <= 3 ? 'blisko' : ''}">${odliczanie}</div>
+      </div>
+      ${dol}
+      <div class="egz-akcje">
+        <button class="ikona usun" data-akcja="usun-egzamin" data-id="${e.id}">Usuń egzamin z powtórkami</button>
+      </div>
+    </article>`;
+}
+
+function widokSesja() {
+  const egzaminy = dane.zadania.filter(z => czyEgzamin(z)).sort(porownajTermin);
+  const nadchodzace = egzaminy.filter(e => !e.wykonane && (!e.termin || e.termin >= DZIS));
+  const zakonczone = egzaminy.filter(e => e.wykonane || (e.termin && e.termin < DZIS));
+  const opcjeIle = [3, 4, 5, 6, 7].map(n => `<option value="${n}" ${formEgz.ile == n ? 'selected' : ''}>${n}</option>`).join('');
+
+  let html = `
+    <section class="sekcja">
+      <h2>Tryb sesji egzaminacyjnej</h2>
+      <form id="form-egz" class="egz-form" autocomplete="off">
+        <label class="pole"><span>Przedmiot *</span>
+          <input data-egz="przedmiot" type="text" maxlength="150" placeholder="np. Analiza matematyczna" value="${esc(formEgz.przedmiot)}"></label>
+        <label class="pole"><span>Data egzaminu *</span>
+          <input data-egz="data" type="date" min="${dodajDni(DZIS, 1)}" value="${esc(formEgz.data)}"></label>
+        <label class="pole"><span>Zakres / uwagi</span>
+          <input data-egz="opis" type="text" maxlength="300" placeholder="np. wykłady 1–8, sala 204" value="${esc(formEgz.opis)}"></label>
+        <label class="pole"><span>Liczba powtórek</span>
+          <select data-egz="ile">${opcjeIle}</select></label>
+        <label class="pole"><span>Ważność</span>
+          <select data-egz="priorytet">
+            ${PRIORYTETY.slice().reverse().map(p => `<option value="${p}" ${formEgz.priorytet === p ? 'selected' : ''}>${NAZWA_PRIORYTETU[p]}</option>`).join('')}
+          </select></label>
+        <div class="egz-form-dol">
+          <div id="podglad-egz" class="podglad-planu"></div>
+          <small class="blad" id="blad-egz"></small>
+          <button type="submit" class="przycisk glowny">Dodaj egzamin i zaplanuj powtórki</button>
+        </div>
+      </form>
+      <p class="maly-tekst">Powtórki są coraz gęściej przed egzaminem (np. 14, 7, 4, 2 i 1 dzień przed) – tak działa nauka z powtórkami w odstępach.
+        Każda powtórka to zwykłe zadanie z tagiem #powtórka, więc widać je w kalendarzu i zapisują się w pliku JSON.</p>
+    </section>`;
+
+  html += `<section class="sekcja"><h2>Nadchodzące egzaminy <span class="licznik">${nadchodzace.length}</span></h2>`;
+  html += nadchodzace.length
+    ? `<div class="egzaminy">${nadchodzace.map(htmlEgzaminu).join('')}</div>`
+    : '<div class="pusto">Brak egzaminów. Dodaj pierwszy formularzem powyżej – albo oznacz zwykłe zadanie tagiem #egzamin.</div>';
+  html += '</section>';
+  if (zakonczone.length) {
+    html += `<section class="sekcja"><h2>Zakończone <span class="licznik">${zakonczone.length}</span></h2>
+      <div class="egzaminy zakonczone">${zakonczone.map(htmlEgzaminu).join('')}</div></section>`;
+  }
+  return html;
+}
+
+// Formularz egzaminu: zapamiętujemy wpisane wartości (widok odświeża się po każdej zmianie danych)
+tresc.addEventListener('input', e => {
+  const k = e.target.dataset.egz;
+  if (!k) return;
+  formEgz[k] = e.target.value;
+  const blad = document.getElementById('blad-egz');
+  if (blad) blad.textContent = '';
+  podgladEgzaminu();
+});
+tresc.addEventListener('submit', e => {
+  if (e.target.id !== 'form-egz') return;
+  e.preventDefault();
+  dodajEgzamin();
+});
 
 /* ---------- Zakładka "Alarmy": przeciążone dni ---------- */
 function dniPrzeciazone(mapa) {
@@ -733,9 +951,11 @@ function odswiez() {
   const fokus = document.activeElement?.dataset?.filtr;   // nie gubimy kursora w wyszukiwarce
 
   if (oknoSzczegoly.open && szczegolyId !== null) pokazSzczegoly(szczegolyId);
+  if (widok === 'sesja') setTimeout(podgladEgzaminu, 0);
 
   if (widok === 'tydzien') tresc.innerHTML = widokTydzien(mapa);
   else if (widok === 'alarmy') tresc.innerHTML = widokAlarmy(mapa);
+  else if (widok === 'sesja') tresc.innerHTML = widokSesja();
   else if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
   else if (widok === 'plan') tresc.innerHTML = widokPlan(mapa);
   else tresc.innerHTML = widokWszystkie();
@@ -785,6 +1005,10 @@ function podgladPlanu() {
     return;
   }
   const proba = { id: edytowaneId ?? -1, ...w, wykonane: false };
+  if (czyPowtorka(proba)) {
+    el.innerHTML = 'To powtórka przed egzaminem – nie dostaje osobnych sesji pracy.';
+    return;
+  }
   const plan = planSesji(proba);
   const potrzebne = SESJE_NA_PRIORYTET[w.priorytet];
   const p = pilnosc(proba);
@@ -881,6 +1105,8 @@ document.addEventListener('click', e => {
     case 'zamknij-szczegoly': oknoSzczegoly.close(); break;
     case 'grupuj': filtry.grupuj = el.dataset.wartosc; odswiez(); break;
     case 'pokaz-zrobione': filtry.pokazZrobione = el.checked; odswiez(); break;
+    case 'zaplanuj-powtorki': zaplanujPowtorki(id); break;
+    case 'usun-egzamin': usunEgzamin(id); break;
     case 'odhacz': przelaczWykonane(id); break;
     case 'sesja': przelaczSesje(id, el.dataset.data); break;
     case 'wczytaj': document.getElementById('plik').click(); break;

@@ -418,6 +418,65 @@ h1 { font-size: 18px; margin: 0; }
 .usun-przycisk { color: var(--wysoki); }
 .usun-przycisk:hover { background: #fff5f5; border-color: #ffc9c9; }
 
+/* ----- Tryb sesji egzaminacyjnej ----- */
+.egz-form {
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+.egz-form select, .egz-form input {
+  border: 1px solid var(--linia); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; background: #fff;
+}
+.egz-form-dol { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.egz-form-dol .podglad-planu { flex: 1 1 300px; }
+.egz-form-dol .blad { flex-basis: 100%; order: -1; }
+.egzaminy { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.egzaminy.zakonczone { opacity: .65; }
+.egzamin {
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-top: 4px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.egzamin.p-wysoki { border-top-color: var(--wysoki); }
+.egzamin.p-sredni { border-top-color: var(--sredni); }
+.egzamin.p-niski { border-top-color: var(--niski); }
+.egz-gora { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.egz-tytul { border: none; background: none; padding: 0; font-weight: 700; font-size: 16px; text-align: left; color: var(--tekst); }
+.egz-tytul:hover { color: var(--akcent); }
+.odliczanie {
+  background: var(--akcent-jasny); color: var(--akcent);
+  border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 14px; white-space: nowrap;
+}
+.odliczanie.blisko { background: #fff0f0; color: var(--pilne); }
+.egz-postep { display: flex; align-items: center; gap: 10px; }
+.egz-postep .pasek { flex: 1; margin: 0; }
+.powtorki { display: flex; flex-wrap: wrap; gap: 6px; }
+.powtorka {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--linia); background: #fafaf8; border-radius: 20px;
+  padding: 3px 10px 3px 4px; font-size: 12px;
+}
+.powtorka:hover { border-color: var(--akcent); }
+.powtorka-znak {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c4c4c0;
+  display: grid; place-items: center; font-size: 10px; color: #fff;
+}
+.powtorka.zrobiona { color: var(--szary); text-decoration: line-through; }
+.powtorka.zrobiona .powtorka-znak { background: var(--spokojnie); border-color: var(--spokojnie); }
+.powtorka.zalegla { border-color: #ffc9c9; color: var(--pilne); }
+.powtorka.dzis { border-color: var(--akcent); font-weight: 600; }
+.egz-akcje { display: flex; justify-content: flex-end; }
+.egz-akcje .ikona { font-size: 12px; }
+
 /* ----- Puste stany ----- */
 .pusto {
   text-align: center;
@@ -527,6 +586,11 @@ h1 { font-size: 18px; margin: 0; }
 
 @media (max-width: 860px) {
   .wykres { grid-template-columns: repeat(14, 44px); overflow-x: auto; }
+}
+
+@media (max-width: 860px) {
+  .egz-form { grid-template-columns: 1fr 1fr; }
+  .egz-form .pole:first-child, .egz-form .pole:nth-child(3) { grid-column: 1 / -1; }
 }
 
 /* ----- Telefon ----- */
