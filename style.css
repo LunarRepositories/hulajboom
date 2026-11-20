@@ -124,6 +124,52 @@ h1 { font-size: 18px; margin: 0; }
 .alarm li { margin: 3px 0; }
 .alarm .przycisk { margin-top: 8px; }
 
+.plakietka {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+  border-radius: 10px;
+  background: var(--wysoki);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.plakietka[hidden] { display: none; }
+.ok-box {
+  border: 1px solid #b2f2bb;
+  background: #ebfbee;
+  border-radius: var(--promien);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+.ok-box strong { color: var(--spokojnie); }
+
+/* Wykres słupkowy obciążenia */
+.wykres {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 6px;
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 14px 12px 10px;
+  height: 260px;
+}
+.slupek { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.slupek-wartosc { font-size: 12px; font-weight: 600; }
+.slupek-tor { flex: 1; width: 70%; max-width: 34px; display: flex; align-items: flex-end; position: relative; }
+.slupek-tor .limit { position: absolute; left: -6px; right: -6px; border-top: 1px dashed #ff8787; }
+.slupek-tor > div { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--spokojnie); min-height: 3px; }
+.slupek.sredni .slupek-tor > div { background: var(--wkrotce); }
+.slupek.pelny .slupek-tor > div { background: var(--pilne); }
+.slupek.pelny .slupek-wartosc { color: var(--pilne); }
+.slupek-dzien { font-size: 11px; color: var(--szary); }
+.slupek-data { font-size: 10px; color: #a0a09a; }
+
 /* ----- Licznik obciążenia dnia ----- */
 .obciazenie {
   background: var(--karta);
@@ -415,6 +461,10 @@ h1 { font-size: 18px; margin: 0; }
 @media (max-width: 860px) {
   .tydzien { grid-template-columns: repeat(7, 150px); overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
   .kolumna { scroll-snap-align: start; }
+}
+
+@media (max-width: 860px) {
+  .wykres { grid-template-columns: repeat(14, 44px); overflow-x: auto; }
 }
 
 /* ----- Telefon ----- */

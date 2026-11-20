@@ -453,7 +453,7 @@ function widokDzis(mapa) {
     .map(z => ({ data: DZIS, zadanie: z, nr: zrobioneSesje(z.id).indexOf(DZIS) + 1, z: SESJE_NA_PRIORYTET[z.priorytet] }));
   const zrobioneDzisZadania = dane.zadania.filter(z => z.wykonane && z.termin === DZIS);
 
-  let html = htmlAlarmu(mapa) + htmlLicznikaDnia(mapa[DZIS]);
+  let html = htmlLicznikaDnia(mapa[DZIS]);
   if (zalegle.length) html += sekcja('Po terminie', zalegle.length, `<ul class="lista">${zalegle.map(htmlZadania).join('')}</ul>`);
   html += sekcja('Termin dziś', naDzis.length,
     naDzis.length ? `<ul class="lista">${naDzis.map(htmlZadania).join('')}</ul>` : '<div class="pusto">Na dziś nie ma żadnych terminów.</div>');
@@ -516,7 +516,7 @@ function widokWszystkie(mapa) {
       </select>
     </div>`;
 
-  let html = htmlAlarmu(mapa) + filtryHtml;
+  let html = filtryHtml;
   if (!dane.zadania.length) {
     html += `<div class="pusto">Nie masz jeszcze żadnych zadań.<br>
       <button class="przycisk glowny" data-akcja="nowe">+ Dodaj pierwsze zadanie</button>
@@ -567,11 +567,57 @@ function widokTydzien(mapa) {
   const bezTerminu = dane.zadania.filter(z => !z.wykonane && !z.termin).length;
   const pozniej = dane.zadania.filter(z => !z.wykonane && z.termin && z.termin > dodajDni(DZIS, 6)).length;
 
-  let html = htmlAlarmu(mapa);
+  let html = '';
   html += `<div class="tydzien">${kolumny.join('')}</div>`;
   html += `<p class="maly-tekst tydzien-stopka">Kolor paska = ważność zadania. Kliknij zadanie, aby je edytować, a kółko – aby je odhaczyć.
     ${pozniej ? `Później: ${pozniej} zad.` : ''} ${bezTerminu ? `· Bez terminu: ${bezTerminu} zad.` : ''}
     <button class="link" data-widok="wszystkie">Zobacz wszystkie →</button></p>`;
+  return html;
+}
+
+/* ---------- Zakładka "Alarmy": przeciążone dni ---------- */
+function dniPrzeciazone(mapa) {
+  return Object.entries(mapa).filter(([, i]) => i.punkty > LIMIT_DNIA);
+}
+
+function widokAlarmy(mapa) {
+  const przeciazone = dniPrzeciazone(mapa);
+  let html = '';
+  if (przeciazone.length) {
+    html += htmlAlarmu(mapa);
+  } else {
+    html += `<div class="ok-box"><strong>✓ Brak przeciążeń</strong> – w najbliższych ${HORYZONT_DNI} dniach żaden dzień nie przekracza ${LIMIT_DNIA} pkt.</div>`;
+  }
+
+  const liniaLimitu = Math.round(LIMIT_DNIA / (LIMIT_DNIA * 1.6) * 100);
+  const slupki = Object.entries(mapa).map(([d, info]) => {
+    const wys = Math.min(100, Math.round(info.punkty / (LIMIT_DNIA * 1.6) * 100));
+    const klasa = info.punkty > LIMIT_DNIA ? 'pelny' : info.punkty >= LIMIT_DNIA - 1 ? 'sredni' : '';
+    const z = zISO(d);
+    return `
+      <div class="slupek ${klasa}" title="${esc(ladnaData(d))}: ${info.punkty} pkt">
+        <span class="slupek-wartosc">${info.punkty}</span>
+        <div class="slupek-tor"><div style="height:${wys}%"></div><i class="limit" style="bottom:${liniaLimitu}%"></i></div>
+        <span class="slupek-dzien">${d === DZIS ? 'dziś' : esc(z.toLocaleDateString('pl-PL', { weekday: 'short' }))}</span>
+        <span class="slupek-data">${z.getDate()}.${String(z.getMonth() + 1).padStart(2, '0')}</span>
+      </div>`;
+  }).join('');
+
+  html += `
+    <section class="sekcja">
+      <h2>Obciążenie na ${HORYZONT_DNI} dni <span class="maly-tekst" style="text-transform:none;letter-spacing:0">· przerywana linia = limit ${LIMIT_DNIA} pkt</span></h2>
+      <div class="wykres">
+        ${slupki}
+      </div>
+    </section>
+    <section class="sekcja">
+      <h2>Jak liczymy punkty?</h2>
+      <div class="obciazenie maly-tekst" style="color:var(--tekst)">
+        Termin zadania: <b>wysoki 3 pkt</b>, <b>średni 2 pkt</b>, <b>niski 1 pkt</b> · każda sesja pracy: <b>1 pkt</b>.<br>
+        Dzień powyżej <b>${LIMIT_DNIA} pkt</b> jest przeciążony – wtedy podpowiadamy wcześniejszy, luźniejszy dzień,
+        żeby zacząć pracę zawczasu zamiast robić wszystko na ostatnią chwilę.
+      </div>
+    </section>`;
   return html;
 }
 
@@ -596,7 +642,7 @@ function widokPlan(mapa) {
       </div>`;
   }).join('');
 
-  let html = htmlAlarmu(mapa);
+  let html = '';
   html += `<p class="maly-tekst" style="margin-top:0">Plan liczy się sam: ważność (priorytet) decyduje, ile sesji pracy potrzebuje zadanie,
     a pilność (czas do terminu) – jak gęsto są rozłożone. Pominięta sesja nie przepada, tylko przesuwa się na kolejne dni.</p>`;
   html += `<div class="dni">${dni}</div>`;
@@ -613,6 +659,7 @@ function odswiez() {
   const fokus = document.activeElement?.dataset?.filtr;   // nie gubimy kursora w wyszukiwarce
 
   if (widok === 'tydzien') tresc.innerHTML = widokTydzien(mapa);
+  else if (widok === 'alarmy') tresc.innerHTML = widokAlarmy(mapa);
   else if (widok === 'dzis') tresc.innerHTML = widokDzis(mapa);
   else if (widok === 'plan') tresc.innerHTML = widokPlan(mapa);
   else tresc.innerHTML = widokWszystkie(mapa);
@@ -623,6 +670,12 @@ function odswiez() {
   }
 
   document.querySelectorAll('.zakladka').forEach(b => b.classList.toggle('aktywna', b.dataset.widok === widok));
+
+  // licznik przeciążonych dni na zakładce "Alarmy"
+  const ileAlarmow = dniPrzeciazone(mapa).length;
+  const plakietka = document.getElementById('plakietka-alarmy');
+  plakietka.textContent = ileAlarmow;
+  plakietka.hidden = ileAlarmow === 0;
 
   const aktywne = dane.zadania.filter(z => !z.wykonane).length;
   const zalegle = dane.zadania.filter(poTerminie).length;
