@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planner studenta</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="gora">
+    <div class="gora-wnetrze">
+      <div class="logo">
+        <span class="logo-znak">✓</span>
+        <div>
+          <h1>Planner studenta</h1>
+          <p id="podtytul" class="podtytul"></p>
+        </div>
+      </div>
+      <div class="akcje">
+        <button class="przycisk" data-akcja="wczytaj" title="Wczytaj zadania z pliku JSON">Wczytaj JSON</button>
+        <button class="przycisk" data-akcja="zapisz" title="Zapisz zadania do pliku JSON">Zapisz JSON</button>
+        <button class="przycisk glowny" data-akcja="nowe">+ Nowe zadanie</button>
+      </div>
+    </div>
+    <nav class="zakladki" aria-label="Widoki">
+      <button class="zakladka" data-widok="dzis">Dziś</button>
+      <button class="zakladka" data-widok="wszystkie">Wszystkie zadania</button>
+      <button class="zakladka" data-widok="plan">Plan na 14 dni</button>
+    </nav>
+  </header>
+
+  <main id="tresc" class="tresc"></main>
+
+  <!-- Formularz dodawania / edycji -->
+  <dialog id="okno" class="okno">
+    <form id="formularz" method="dialog" novalidate>
+      <h2 id="okno-tytul">Nowe zadanie</h2>
+
+      <label class="pole">
+        <span>Tytuł *</span>
+        <input name="tytul" type="text" maxlength="200" autocomplete="off" required>
+        <small class="blad" id="blad-tytul"></small>
+      </label>
+
+      <label class="pole">
+        <span>Opis</span>
+        <textarea name="opis" rows="3" maxlength="2000"></textarea>
+      </label>
+
+      <div class="rzad">
+        <label class="pole">
+          <span>Termin</span>
+          <input name="termin" type="date">
+          <small class="podpowiedz">Zostaw puste, jeśli zadanie nie ma terminu.</small>
+        </label>
+
+        <fieldset class="pole">
+          <legend>Ważność (priorytet)</legend>
+          <div class="segmenty">
+            <label><input type="radio" name="priorytet" value="niski"><span>Niski</span></label>
+            <label><input type="radio" name="priorytet" value="sredni"><span>Średni</span></label>
+            <label><input type="radio" name="priorytet" value="wysoki"><span>Wysoki</span></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <label class="pole">
+        <span>Tagi</span>
+        <input name="tagi" type="text" list="lista-tagow" autocomplete="off" placeholder="np. studia, projekt">
+        <small class="podpowiedz">Oddziel przecinkami.</small>
+        <datalist id="lista-tagow"></datalist>
+      </label>
+
+      <div id="podglad-planu" class="podglad-planu"></div>
+
+      <div class="okno-stopka">
+        <button type="button" class="przycisk" data-akcja="anuluj">Anuluj</button>
+        <button type="submit" class="przycisk glowny">Zapisz</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input type="file" id="plik" accept=".json,application/json" hidden>
+  <div id="upuszczanie" class="upuszczanie" hidden>Upuść plik JSON, aby wczytać zadania</div>
+  <div id="powiadomienia" class="powiadomienia" aria-live="polite"></div>
+
+  <script src="przyklad.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+// Przykładowe zadania (kopia zadania.json) – wczytywane przy pierwszym uruchomieniu.
+// Dzięki temu aplikacja działa po zwykłym otwarciu index.html, bez serwera.
+window.PRZYKLADOWE_DANE = {
+  "wersja": 1,
+  "zadania": [
+    {
+      "id": 1,
+      "tytul": "Kolokwium z sieci komputerowych",
+      "opis": "Rozdziały 3–5",
+      "termin": "2026-11-18",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["studia"]
+    },
+    {
+      "id": 2,
+      "tytul": "Projekt z baz danych – etap 1",
+      "opis": "Diagram ERD i skrypt tworzący tabele",
+      "termin": "2026-11-25",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["studia", "projekt"]
+    },
+    {
+      "id": 3,
+      "tytul": "Zakupy spożywcze",
+      "opis": "Mleko, chleb, jajka, makaron",
+      "termin": "2026-11-21",
+      "priorytet": "sredni",
+      "wykonane": false,
+      "tagi": ["dom"]
+    },
+    {
+      "id": 4,
+      "tytul": "Zapłacić za akademik",
+      "opis": "",
+      "termin": "2026-11-30",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["finanse"]
+    },
+    {
+      "id": 5,
+      "tytul": "Przeczytać artykuł o algorytmach sortowania",
+      "opis": "Link na stronie przedmiotu",
+      "termin": null,
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": ["studia"]
+    },
+    {
+      "id": 6,
+      "tytul": "Laboratorium z programowania – sprawozdanie",
+      "opis": "Lab 6: wskaźniki i tablice dynamiczne",
+      "termin": "2026-11-22",
+      "priorytet": "sredni",
+      "wykonane": true,
+      "tagi": ["studia"]
+    },
+    {
+      "id": 7,
+      "tytul": "Siłownia",
+      "opis": "Trening nóg",
+      "termin": "2026-11-20",
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": ["sport"]
+    },
+    {
+      "id": 8,
+      "tytul": "Egzamin z matematyki dyskretnej",
+      "opis": "Grafy, kombinatoryka, relacje",
+      "termin": "2026-12-15",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["studia", "egzamin"]
+    },
+    {
+      "id": 9,
+      "tytul": "Oddać książki do biblioteki",
+      "opis": "",
+      "termin": "2026-11-19",
+      "priorytet": "sredni",
+      "wykonane": true,
+      "tagi": []
+    },
+    {
+      "id": 10,
+      "tytul": "Zadzwonić do mamy",
+      "opis": "",
+      "termin": null,
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": ["rodzina"]
+    },
+    {
+      "id": 11,
+      "tytul": "Prezentacja na seminarium",
+      "opis": "Temat: bezpieczeństwo aplikacji webowych, 15 minut",
+      "termin": "2026-12-03",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["studia", "projekt"]
+    },
+    {
+      "id": 12,
+      "tytul": "Posprzątać pokój",
+      "opis": "Odkurzyć i wynieść śmieci",
+      "termin": "2026-11-22",
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": ["dom"]
+    },
+    {
+      "id": 13,
+      "tytul": "Kupić bilet miesięczny",
+      "opis": "Bilet studencki na grudzień",
+      "termin": "2026-11-30",
+      "priorytet": "sredni",
+      "wykonane": false,
+      "tagi": ["finanse"]
+    },
+    {
+      "id": 14,
+      "tytul": "Kolokwium z fizyki",
+      "opis": "Kinematyka i dynamika",
+      "termin": "2026-11-27",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["studia"]
+    },
+    {
+      "id": 15,
+      "tytul": "Zrobić kopię zapasową laptopa",
+      "opis": "",
+      "termin": null,
+      "priorytet": "sredni",
+      "wykonane": false,
+      "tagi": []
+    },
+    {
+      "id": 16,
+      "tytul": "Wysłać CV na staż",
+      "opis": "Oferta: junior developer, praca zdalna",
+      "termin": "2026-12-01",
+      "priorytet": "wysoki",
+      "wykonane": false,
+      "tagi": ["praca"]
+    },
+    {
+      "id": 17,
+      "tytul": "Urodziny Kasi – kupić prezent",
+      "opis": "Lubi książki fantasy",
+      "termin": "2026-12-05",
+      "priorytet": "sredni",
+      "wykonane": false,
+      "tagi": ["znajomi"]
+    },
+    {
+      "id": 18,
+      "tytul": "Zapisać się na zajęcia z WF",
+      "opis": "",
+      "termin": "2026-11-15",
+      "priorytet": "sredni",
+      "wykonane": true,
+      "tagi": ["studia", "sport"]
+    },
+    {
+      "id": 19,
+      "tytul": "Obejrzeć wykład z systemów operacyjnych",
+      "opis": "Nagranie z 13.11 – procesy i wątki",
+      "termin": "2026-11-23",
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": ["studia"]
+    },
+    {
+      "id": 20,
+      "tytul": "Umówić wizytę u dentysty",
+      "opis": "",
+      "termin": null,
+      "priorytet": "niski",
+      "wykonane": false,
+      "tagi": []
+    }
+  ]
+};

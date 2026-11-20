@@ -1,0 +1,366 @@
+/* ===== Planner studenta – czysty, minimalistyczny styl ===== */
+:root {
+  --tlo: #f7f7f5;
+  --karta: #ffffff;
+  --tekst: #1f2328;
+  --szary: #6b7280;
+  --linia: #e6e6e3;
+  --akcent: #3b5bdb;
+  --akcent-jasny: #edf2ff;
+  --wysoki: #e03131;
+  --sredni: #e8890c;
+  --niski: #5c940d;
+  --pilne: #e03131;
+  --wkrotce: #e8890c;
+  --spokojnie: #2b8a3e;
+  --promien: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--tlo);
+  color: var(--tekst);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+button { font: inherit; cursor: pointer; }
+
+/* ----- Góra ----- */
+.gora {
+  background: var(--karta);
+  border-bottom: 1px solid var(--linia);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.gora-wnetrze {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 14px 20px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-znak {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: var(--akcent);
+  color: #fff;
+  display: grid; place-items: center;
+  font-weight: 700;
+}
+h1 { font-size: 18px; margin: 0; }
+.podtytul { margin: 0; color: var(--szary); font-size: 13px; }
+.akcje { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.przycisk {
+  border: 1px solid var(--linia);
+  background: var(--karta);
+  color: var(--tekst);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 14px;
+}
+.przycisk:hover { background: #f1f1ef; }
+.przycisk.glowny { background: var(--akcent); border-color: var(--akcent); color: #fff; }
+.przycisk.glowny:hover { filter: brightness(1.08); }
+.przycisk.maly { padding: 4px 9px; font-size: 13px; }
+
+.zakladki {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+.zakladka {
+  border: none;
+  background: none;
+  padding: 10px 12px;
+  color: var(--szary);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.zakladka.aktywna { color: var(--tekst); border-bottom-color: var(--akcent); font-weight: 600; }
+
+/* ----- Treść ----- */
+.tresc { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+.sekcja { margin-bottom: 26px; }
+.sekcja h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--szary);
+  margin: 0 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.licznik {
+  background: #ececea;
+  border-radius: 20px;
+  padding: 0 7px;
+  font-size: 12px;
+  color: var(--tekst);
+}
+
+/* ----- Alarm przeciążenia ----- */
+.alarm {
+  border: 1px solid #ffc9c9;
+  background: #fff5f5;
+  border-radius: var(--promien);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+.alarm strong { color: var(--wysoki); }
+.alarm ul { margin: 6px 0 0; padding-left: 18px; }
+.alarm li { margin: 3px 0; }
+.alarm .przycisk { margin-top: 8px; }
+
+/* ----- Licznik obciążenia dnia ----- */
+.obciazenie {
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 14px;
+  margin-bottom: 22px;
+}
+.obciazenie-gora { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pasek { height: 8px; border-radius: 6px; background: #ececea; overflow: hidden; margin-top: 8px; }
+.pasek > div { height: 100%; border-radius: 6px; background: var(--spokojnie); transition: width .3s; }
+.pasek.sredni > div { background: var(--wkrotce); }
+.pasek.pelny > div { background: var(--pilne); }
+.maly-tekst { color: var(--szary); font-size: 13px; }
+
+/* ----- Pasek filtrów ----- */
+.filtry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.filtry input, .filtry select {
+  border: 1px solid var(--linia);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  background: var(--karta);
+}
+.filtry input[type="search"] { flex: 1 1 200px; }
+
+/* ----- Zadanie ----- */
+.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.zadanie {
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-left: 4px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 12px;
+  align-items: start;
+}
+.zadanie.p-wysoki { border-left-color: var(--wysoki); }
+.zadanie.p-sredni { border-left-color: var(--sredni); }
+.zadanie.p-niski { border-left-color: var(--niski); }
+.zadanie.zrobione { opacity: .6; }
+.zadanie.zrobione .zadanie-tytul { text-decoration: line-through; }
+
+.odhacz {
+  width: 22px; height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 2px solid #c4c4c0;
+  background: #fff;
+  display: grid; place-items: center;
+  color: #fff;
+  font-size: 13px;
+  padding: 0;
+}
+.odhacz:hover { border-color: var(--akcent); }
+.zrobione .odhacz { background: var(--spokojnie); border-color: var(--spokojnie); }
+
+.zadanie-tytul { font-weight: 600; word-break: break-word; }
+.zadanie-opis { color: var(--szary); font-size: 14px; margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+.znaczek {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: #f1f1ef;
+  color: var(--szary);
+  white-space: nowrap;
+}
+.znaczek.tag { background: var(--akcent-jasny); color: var(--akcent); }
+.znaczek.pilne { background: #fff0f0; color: var(--pilne); }
+.znaczek.wkrotce { background: #fff4e6; color: var(--wkrotce); }
+.znaczek.spokojnie { background: #ebfbee; color: var(--spokojnie); }
+.znaczek.w-wysoki { color: var(--wysoki); }
+.znaczek.w-sredni { color: var(--sredni); }
+.znaczek.w-niski { color: var(--niski); }
+
+.zadanie-akcje { display: flex; gap: 4px; }
+.ikona {
+  border: none;
+  background: none;
+  color: var(--szary);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 14px;
+}
+.ikona:hover { background: #f1f1ef; color: var(--tekst); }
+.ikona.usun:hover { color: var(--wysoki); }
+
+/* ----- Sesje pracy ----- */
+.sesja {
+  background: var(--karta);
+  border: 1px dashed #c9d2f5;
+  border-radius: var(--promien);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sesja .odhacz { border-radius: 6px; }
+.sesja.zrobiona .odhacz { background: var(--spokojnie); border-color: var(--spokojnie); }
+.sesja.zrobiona .sesja-tekst { text-decoration: line-through; opacity: .6; }
+.sesja-tekst { flex: 1; }
+
+/* ----- Plan na 14 dni ----- */
+.dni { display: grid; gap: 10px; }
+.dzien {
+  background: var(--karta);
+  border: 1px solid var(--linia);
+  border-radius: var(--promien);
+  padding: 12px 14px;
+}
+.dzien.przeciazony { border-color: #ffa8a8; background: #fffafa; }
+.dzien.dzisiaj { box-shadow: inset 3px 0 0 var(--akcent); }
+.dzien-gora { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.dzien-nazwa { font-weight: 600; }
+.dzien ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.dzien li { display: flex; gap: 8px; align-items: baseline; }
+.kropka { width: 8px; height: 8px; border-radius: 50%; flex: none; transform: translateY(-1px); }
+.kropka.wysoki { background: var(--wysoki); }
+.kropka.sredni { background: var(--sredni); }
+.kropka.niski { background: var(--niski); }
+.kropka.sesja-kropka { background: none; border: 2px solid var(--akcent); width: 9px; height: 9px; }
+.pusty-dzien { color: var(--szary); font-size: 14px; margin-top: 6px; }
+
+/* ----- Puste stany ----- */
+.pusto {
+  text-align: center;
+  color: var(--szary);
+  padding: 28px 10px;
+  border: 1px dashed var(--linia);
+  border-radius: var(--promien);
+  background: var(--karta);
+}
+.pusto .przycisk { margin: 10px 4px 0; }
+
+/* ----- Okno (dialog) ----- */
+.okno {
+  border: none;
+  border-radius: 14px;
+  padding: 0;
+  width: min(560px, 94vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.okno::backdrop { background: rgba(20, 20, 20, .35); }
+.okno form { padding: 20px; display: grid; gap: 14px; }
+.okno h2 { margin: 0; font-size: 18px; }
+.pole { display: grid; gap: 5px; border: none; padding: 0; margin: 0; min-width: 0; }
+.pole > span, .pole legend { font-size: 13px; font-weight: 600; color: var(--szary); padding: 0; margin-bottom: 5px; }
+.pole input[type="text"], .pole input[type="date"], .pole textarea {
+  border: 1px solid var(--linia);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  width: 100%;
+}
+.pole textarea { resize: vertical; }
+.pole input:focus, .pole textarea:focus, .filtry input:focus, .filtry select:focus {
+  outline: 2px solid var(--akcent-jasny);
+  border-color: var(--akcent);
+}
+.rzad { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.podpowiedz { color: var(--szary); font-size: 12px; }
+.blad { color: var(--wysoki); font-size: 12px; min-height: 0; }
+.blad:empty { display: none; }
+
+.segmenty { display: flex; border: 1px solid var(--linia); border-radius: 8px; overflow: hidden; }
+.segmenty label { flex: 1; }
+.segmenty input { position: absolute; opacity: 0; pointer-events: none; }
+.segmenty span { display: block; text-align: center; padding: 7px 4px; font-size: 14px; cursor: pointer; }
+.segmenty label + label span { border-left: 1px solid var(--linia); }
+.segmenty input:checked + span { background: var(--akcent-jasny); color: var(--akcent); font-weight: 600; }
+.segmenty input:focus-visible + span { outline: 2px solid var(--akcent); outline-offset: -2px; }
+
+.podglad-planu {
+  background: var(--akcent-jasny);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.podglad-planu:empty { display: none; }
+.okno-stopka { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ----- Powiadomienia (toast) ----- */
+.powiadomienia {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  z-index: 20;
+  width: min(480px, 92vw);
+}
+.toast {
+  background: #1f2328;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
+}
+.toast button { background: none; border: none; color: #91a7ff; font-weight: 600; padding: 0; }
+
+/* ----- Przeciąganie pliku ----- */
+.upuszczanie {
+  position: fixed;
+  inset: 0;
+  background: rgba(59, 91, 219, .12);
+  border: 3px dashed var(--akcent);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--akcent);
+  z-index: 30;
+  pointer-events: none;
+}
+.upuszczanie[hidden] { display: none; }
+
+/* ----- Telefon ----- */
+@media (max-width: 600px) {
+  .gora-wnetrze { padding: 12px 14px 6px; }
+  .zakladki, .tresc { padding-left: 14px; padding-right: 14px; }
+  .rzad { grid-template-columns: 1fr; }
+  .zadanie { grid-template-columns: auto 1fr; }
+  .zadanie-akcje { grid-column: 2; }
+  .akcje .przycisk:not(.glowny) { font-size: 13px; padding: 6px 9px; }
+}
